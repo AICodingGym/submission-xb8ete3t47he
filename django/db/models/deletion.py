@@ -1,7 +1,6 @@
 from collections import Counter
 from operator import attrgetter
 
-from django.core.exceptions import FieldDoesNotExist
 from django.db import IntegrityError, connections, transaction
 from django.db.models import signals, sql
 
@@ -235,24 +234,21 @@ class Collector:
         """
         field = related.field
         model = related.related_model
-        field_names = [model._meta.pk.name]
-
-        if field.target_field.name != model._meta.pk.name:
-            try:
-                model._meta.get_field(field.target_field.name)
-            except FieldDoesNotExist:
-                pass
-            else:
-                field_names.append(field.target_field.name)
-                return model._base_manager.using(self.using).filter(
-                    **{"%s__in" % field.name: objs}
-                ).only(*field_names)
-
-        if field.name not in field_names:
-            field_names.append(field.name)
-        return model._base_manager.using(self.using).filter(
+        queryset = model._base_manager.using(self.using).filter(
             **{"%s__in" % field.name: objs}
-        ).only(*field_names)
+        )
+        if (signals.pre_delete.has_listeners(model) or
+                signals.post_delete.has_listeners(model)):
+            return queryset
+
+        field_names = [model._meta.pk.name]
+        for related in get_candidate_relations_to_delete(model._meta):
+            if related.field.remote_field.on_delete is DO_NOTHING:
+                continue
+            for target_field in related.field.foreign_related_fields:
+                if target_field.name not in field_names:
+                    field_names.append(target_field.name)
+        return queryset.select_related(None).only(*field_names)
 
     def instances_with_model(self):
         for model, instances in self.data.items():
