@@ -1,6 +1,7 @@
 from collections import Counter
 from operator import attrgetter
 
+from django.core.exceptions import FieldDoesNotExist
 from django.db import IntegrityError, connections, transaction
 from django.db.models import signals, sql
 
@@ -232,9 +233,26 @@ class Collector:
         """
         Get a QuerySet of objects related to `objs` via the relation `related`.
         """
-        return related.related_model._base_manager.using(self.using).filter(
-            **{"%s__in" % related.field.name: objs}
-        ).only(related.related_model._meta.pk.name, related.field.name)
+        field = related.field
+        model = related.related_model
+        field_names = [model._meta.pk.name]
+
+        if field.target_field.name != model._meta.pk.name:
+            try:
+                model._meta.get_field(field.target_field.name)
+            except FieldDoesNotExist:
+                pass
+            else:
+                field_names.append(field.target_field.name)
+                return model._base_manager.using(self.using).filter(
+                    **{"%s__in" % field.name: objs}
+                ).only(*field_names)
+
+        if field.name not in field_names:
+            field_names.append(field.name)
+        return model._base_manager.using(self.using).filter(
+            **{"%s__in" % field.name: objs}
+        ).only(*field_names)
 
     def instances_with_model(self):
         for model, instances in self.data.items():

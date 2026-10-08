@@ -116,6 +116,18 @@ class Parent(models.Model):
     pass
 
 
+class TargetWithUniqueField(models.Model):
+    unique_field = models.CharField(max_length=20, unique=True)
+
+
+class ReferrerWithUniqueField(models.Model):
+    unique_field = models.ForeignKey(
+        TargetWithUniqueField,
+        models.CASCADE,
+        to_field='unique_field',
+    )
+
+
 class Child(Parent):
     pass
 

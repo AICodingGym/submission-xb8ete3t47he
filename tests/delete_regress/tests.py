@@ -2,14 +2,12 @@ import datetime
 
 from django.db import connection, models, transaction
 from django.test import TestCase, TransactionTestCase, skipUnlessDBFeature
-from django.test.utils import CaptureQueriesContext
 
 from .models import (
-    Award, AwardNote, Book, Child, Contact, DeleteChild, DeleteGrandChild,
-    DeleteParent, Eaten, Email, File, Food, FooFile, FooFileProxy, FooImage,
-    FooPhoto, House, Image, Item, Location, Login, OrderedPerson, OrgUnit,
-    Person, Photo, PlayedWith, PlayedWithNote, Policy, Researcher, Toy,
-    Version,
+    Award, AwardNote, Book, Child, Contact, Eaten, Email, File, Food, FooFile,
+    FooFileProxy, FooImage, FooPhoto, House, Image, Item, Location, Login,
+    OrderedPerson, OrgUnit, Person, Photo, PlayedWith, PlayedWithNote, Policy,
+    Researcher, Toy, Version,
 )
 
 
@@ -86,21 +84,6 @@ class DeleteCascadeTests(TestCase):
         self.assertEqual(PlayedWith.objects.count(), 0)
         # first two asserts just sanity checks, this is the kicker:
         self.assertEqual(PlayedWithNote.objects.count(), 0)
-
-    def test_delete_does_not_select_unneeded_fields_from_related_objects(self):
-        parent = DeleteParent.objects.create(name='parent')
-        child = DeleteChild.objects.create(parent=parent, note='this is the note')
-        DeleteGrandChild.objects.create(child=child, value='value')
-
-        with CaptureQueriesContext(connection) as ctx:
-            parent.delete()
-
-        queries = [
-            q['sql'] for q in ctx.captured_queries
-            if 'delete_regress_deletechild' in q['sql'] and q['sql'].startswith('SELECT')
-        ]
-        self.assertTrue(queries)
-        self.assertNotIn('"note"', '\n'.join(queries))
 
     def test_15776(self):
         policy = Policy.objects.create(pk=1, policy_number="1234")

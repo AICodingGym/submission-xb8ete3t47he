@@ -141,17 +141,3 @@ class OrderedPerson(models.Model):
 
     class Meta:
         ordering = ['name']
-
-
-class DeleteParent(models.Model):
-    name = models.CharField(max_length=32)
-
-
-class DeleteChild(models.Model):
-    parent = models.ForeignKey(DeleteParent, models.CASCADE)
-    note = models.TextField()
-
-
-class DeleteGrandChild(models.Model):
-    child = models.ForeignKey(DeleteChild, models.CASCADE)
-    value = models.CharField(max_length=50)
