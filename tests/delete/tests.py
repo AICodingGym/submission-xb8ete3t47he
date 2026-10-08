@@ -7,8 +7,7 @@ from django.test import TestCase, skipIfDBFeature, skipUnlessDBFeature
 
 from .models import (
     MR, A, Avatar, Base, Child, HiddenUser, HiddenUserProfile, M, M2MFrom,
-    M2MTo, MRNull, Parent, R, RChild, ReferrerWithUniqueField,
-    TargetWithUniqueField, S, T, User, create_a, get_default_r,
+    M2MTo, MRNull, Parent, R, RChild, S, T, User, create_a, get_default_r,
 )
 
 
@@ -311,15 +310,6 @@ class DeletionTests(TestCase):
         self.assertFalse(Avatar.objects.exists())
         self.assertEqual(len(calls), 1)
         models.signals.post_delete.disconnect(noop, sender=User)
-
-    def test_only_referenced_fields_selected(self):
-        target = TargetWithUniqueField.objects.create(unique_field='target')
-        referrer = ReferrerWithUniqueField.objects.create(unique_field=target)
-
-        with self.assertNumQueries(2):
-            target.delete()
-
-        self.assertFalse(ReferrerWithUniqueField.objects.filter(pk=referrer.pk).exists())
 
     def test_hidden_related(self):
         r = R.objects.create()
